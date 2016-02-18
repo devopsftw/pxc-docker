@@ -1,0 +1,14 @@
+{
+    "service": {
+        "name" : "pxc",
+        "port" : 3306
+    },
+    "checks": [
+        {
+            "id" : "galera",
+            "service_id" : "pxc",
+            "http" : "http://localhost:8080",
+            "interval" : "5s"
+        }
+    ]
+}

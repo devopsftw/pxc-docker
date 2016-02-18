@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
 if [ -z "$XTRABACKUP_PASSWORD" ]; then
 	echo "XTRABACKUP_PASSWORD not set"
