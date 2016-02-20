@@ -1,5 +1,5 @@
 FROM e96tech/baseimage
-MAINTAINER Danila Shtan <dan@e96.ru>
+MAINTAINER Alex Salt <alex.salt@e96.ru>
 
 ENV DEBIAN_FRONTEND noninteractive
 
