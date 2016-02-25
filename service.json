@@ -5,7 +5,7 @@
             "port" : 3306
         },
         {
-            "name" : "${CLUSTER_NAME:-cluster-leader}",
+            "name" : "${CLUSTER_NAME:-cluster}-leader",
             "port" : 3306
         }
     ],
@@ -19,7 +19,7 @@
         {
             "id" : "leader",
             "name" : "Leader election TTL",
-            "service_id" : "${CLUSTER_NAME:-cluster-leader}",
+            "service_id" : "${CLUSTER_NAME:-cluster}-leader",
             "ttl" : "15s"
         }
     ]
