@@ -10,6 +10,9 @@ QCOMM=""
 CLUSTER_NAME=${CLUSTER_NAME:-cluster}
 MYSQL_MODE_ARGS=""
 
+# wait for services to startup
+sleep 10
+
 case "$1" in
 	seed)
 		# bootstrapping
