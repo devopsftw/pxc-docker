@@ -60,6 +60,8 @@ EOF
 			SEP=,
 		done
 
+		chown mysql:mysql /var/lib/mysql
+
 		shift 2
 		echo "Starting node, connecting to qcomm://$QCOMM"
 		;;
