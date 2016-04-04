@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3 -u
 
 import os
-from time import sleep
+import time
 import json
 import requests
 
@@ -27,6 +27,7 @@ class App:
     def renewSession(self):
         response = requests.put(self.base_url
                 + 'v1/session/renew/' + self._sid)
+        response.raise_for_status()
 
     def acquireLock(self):
         key = self.getKeyName()
@@ -69,6 +70,8 @@ class App:
 
         self.createSession()
         print('sid is', self._sid)
+
+        start_time = time.time()
         while True:
             self.renewSession()
             if self.canParticipate():
@@ -81,7 +84,7 @@ class App:
                     print('not leader')
             else:
                 self.releaseLock()
-            sleep(10)
+            time.sleep(5.0 - (time.time() - start_time) % 5.0)
 
 # run app
 app = App(service = os.getenv('CLUSTER_NAME'))

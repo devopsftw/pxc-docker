@@ -20,7 +20,7 @@
             "id" : "leader",
             "name" : "Leader election TTL",
             "service_id" : "${CLUSTER_NAME:-cluster}-leader",
-            "ttl" : "15s"
+            "ttl" : "10s"
         }
     ]
 }
