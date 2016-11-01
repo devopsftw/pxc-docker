@@ -13,7 +13,7 @@ and clustername-leader service)
 HOW TO USE
 ----------
 ```
-# docker pull e96tech/pxc
+# docker pull devopsftw/pxc
 # docker run \
     -e XTRABACKUP_PASSWORD=12345 \
     -e CLUSTER_NAME=pxc \
