@@ -17,11 +17,11 @@ HOW TO USE
 # docker run \
     -e XTRABACKUP_PASSWORD=12345 \
     -e CLUSTER_NAME=pxc \
-    -d e96tech/pxc \
+    -d devopsftw/pxc \
     seed -- --innodb-buffer-pool-size=10g
 # docker run \
     -e XTRABACKUP_PASSWORD=12345 \
     -e CLUSTER_NAME=pxc \
-    -d e96tech/pxc \
+    -d devopsftw/pxc \
     node node-ip-here -- --innodb-buffer-pool-size=10g
 ```
