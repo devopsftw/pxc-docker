@@ -19,9 +19,7 @@ RUN curl -sL https://github.com/sttts/galera-healthcheck/releases/download/v2015
 RUN apt-get install -y python3-setuptools && \
     easy_install3 pip
 
-RUN rm -rf /etc/my.cnf /etc/mysql/my.cnf
 COPY my.cnf /etc/mysql/my.cnf
-RUN chown mysql.mysql /etc/mysql/my.cnf
 
 COPY start /start
 RUN chmod 555 /start
@@ -30,10 +28,13 @@ COPY service.json /etc/consul/conf.d/
 
 # election service
 ENV CLUSTER_NAME cluster
-COPY elect /elect
-RUN pip install -r /elect/requirements.txt && \
-    mkdir /etc/service/elect && \
-    ln -sv /elect/elect.py /etc/service/elect/run
+COPY elect /opt/elect
+RUN pip install -r /opt/elect/requirements.txt
+
+# set up services
+COPY init/ /etc/my_init.d/
+COPY services/elect.sh /etc/service/elect/run
+COPY services/galeracheck.sh /etc/service/galeracheck/run
 
 # cleanup
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

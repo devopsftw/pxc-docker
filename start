@@ -1,13 +1,6 @@
 #!/bin/bash -e
 
-if [ -z "$XTRABACKUP_PASSWORD" ]; then
-	echo "XTRABACKUP_PASSWORD not set"
-	exit 1
-fi
-
-CLUSTERCHECK_PASSWORD=$(echo "$XTRABACKUP_PASSWORD" | sha256sum | awk '{print $1;}')
 QCOMM=""
-CLUSTER_NAME=${CLUSTER_NAME:-cluster}
 MYSQL_MODE_ARGS=""
 
 # wait for services to startup
@@ -79,7 +72,6 @@ function shutdown () {
 }
 trap shutdown TERM INT
 
-/bin/galera-healthcheck -password="$CLUSTERCHECK_PASSWORD" -pidfile=/var/run/galera-healthcheck.pid -user clustercheck &
 /usr/sbin/mysqld \
 	$MYSQL_MODE_ARGS \
 	--wsrep_cluster_name="$CLUSTER_NAME" \
@@ -89,7 +81,5 @@ trap shutdown TERM INT
 	"$@" 2>&1 &
 wait $!
 RC=$?
-
-test -s /var/run/galera-healthcheck.pid && kill $(cat /var/run/galera-healthcheck.pid)
 
 exit $RC
