@@ -1,94 +1,111 @@
 #!/usr/bin/python3 -u
 
-import os
-import time
-import json
-import requests
+import time, os, logging
+import consul
+from consul import tornado as ConsulTornado
+from tornado import gen
+import tornado
+
+logging.basicConfig(format='%(asctime)-15s %(levelname)-8s %(message)s')
+logger = logging.getLogger('app')
+logger.setLevel(logging.DEBUG)
 
 class App:
-    service = None
+    cluster_name = None
 
-    base_url = 'http://127.0.0.1:8500/'
+    consul_host = 'localhost'
 
     _sid = None
 
-    def __init__(self, service = None):
-        self.service = service
+    def __init__(self, cluster_name=None):
+        self.cluster_name = cluster_name
+        self.io_loop = tornado.ioloop.IOLoop.current()
+        self.consul_tornado = ConsulTornado.Consul(host=self.consul_host)
 
-    def createSession(self):
-        data = {
-            'Name': self.service,
-            'TTL': '10s',
-        }
-        response = requests.put(self.base_url + 'v1/session/create',
-                json = data)
-        self._sid = response.json()['ID']
+    @gen.coroutine
+    def ensure_session(self):
+        if self._sid == None:
+            self._sid = yield self.create_session()
+        else:
+            try:
+                yield self.consul_tornado.session.renew(self._sid)
+            except consul.NotFound:
+                logger.error('session not found, trying to recreate')
+                self._sid = yield self.create_session()
+        return True
 
-    def renewSession(self):
-        response = requests.put(self.base_url
-                + 'v1/session/renew/' + self._sid)
-        response.raise_for_status()
+    @gen.coroutine
+    def create_session(self):
+        sid = yield self.consul_tornado.session.create(self.cluster_name, ttl=10, behavior='delete', lock_delay=0)
+        logger.debug('session created: %s', sid)
+        return sid
 
-    def acquireLock(self):
-        key = self.getKeyName()
-        r = requests.put(self.base_url + 'v1/kv/' + key,
-                params = { 'acquire' : self._sid })
+    @gen.coroutine
+    def acquire_lock(self):
+        logger.debug('acquire lock on key "%s" with session "%s"', self.get_key_name(), self._sid)
+        result = yield self.consul_tornado.kv.put(self.get_key_name(), os.getenv('HOSTNAME'), acquire=self._sid)
+        return result
 
-    def releaseLock(self):
-        key = self.getKeyName()
-        r = requests.put(self.base_url + 'v1/kv/' + key,
-                params = { 'release' : self._sid })
+    @gen.coroutine
+    def release_lock(self):
+        self.consul_tornado.kv.put(self.get_key_name(), '', release=self._sid)
 
-    def getKeyName(self):
-        return 'election:' + self.service
+    def get_key_name(self):
+        return 'election:' + self.cluster_name
 
-    def getKeyData(self):
-        key = self.getKeyName()
-        r = requests.get(self.base_url + 'v1/kv/' + key)
-        if (r.status_code != 200):
-            return { }
-        return r.json()[0]
+    def get_service_name(self):
+        return self.cluster_name + '-leader'
 
-    def renewTTL(self):
-        requests.get(self.base_url + 'v1/agent/check/pass/leader')
+    def get_check_name(self):
+        return 'service:' + self.get_service_name()
 
-    def canParticipate(self):
-        r = requests.get(self.base_url + 'v1/agent/checks')
-        if r.status_code != 200:
-            return False
-        checks = r.json()
-        if len(checks) == 0:
-            return False
+    def renew_ttl(self):
+        yield self.consul_tornado.agent.check.ttl_pass(self.get_check_name())
+
+    @gen.coroutine
+    def can_participate(self):
+        checks = yield self.consul_tornado.agent.checks()
         for checkId, data in checks.items():
-            if data['Status'] != 'passing' and checkId != 'leader':
+            if data['Status'] != 'passing' and checkId != self.get_check_name():
                 return False
         return True
 
-    def run(self):
-        if (self.service is None):
-            raise Exception("service not defined")
+    @gen.coroutine
+    def register(self):
+        check = { 'ttl' : '10s', 'status' : 'passing' }
+        res = yield self.consul_tornado.agent.service.register(self.get_service_name(), check = check)
 
-        self.createSession()
-        print('sid is', self._sid)
+    @gen.coroutine
+    def deregister(self):
+        self.consul_tornado.agent.service.deregister(self.get_service_name())
 
-        start_time = time.time()
+    @gen.coroutine
+    def elect(self):
+        logger.info('start election routine')
         while True:
-            self.renewSession()
-            if self.canParticipate():
-                self.acquireLock()
-                keyData = self.getKeyData()
-                if 'Session' in keyData.keys() and keyData['Session'] == self._sid:
-                    print('is leader')
-                    self.renewTTL()
-                else:
-                    print('not leader')
+            tick = gen.sleep(5)
+            yield self.ensure_session()
+            can_participate, has_lock = yield [ self.can_participate(), self.acquire_lock() ]
+            logger.debug('can participate: %s, has lock: %s', can_participate, has_lock)
+            if can_participate and has_lock:
+                logger.debug('registering as leader')
+                self.register()
+                self.renew_ttl()
             else:
-                self.releaseLock()
-            time.sleep(5.0 - (time.time() - start_time) % 5.0)
+                logger.debug('deregister and release')
+                self.deregister()
+                self.release_lock()
+            yield tick
+
+    def run(self):
+        if (self.cluster_name is None):
+            raise Exception("CLUSTER_NAME not defined")
+        self.io_loop.run_sync(self.elect)
 
 # run app
-app = App(service = os.getenv('CLUSTER_NAME'))
-try:
-    app.run()
-except KeyboardInterrupt:
-    pass
+if __name__ == '__main__':
+    app = App(cluster_name = os.getenv('CLUSTER_NAME'))
+    try:
+        app.run()
+    except KeyboardInterrupt:
+        pass

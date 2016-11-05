@@ -3,10 +3,6 @@
         {
             "name" : "${CLUSTER_NAME:-cluster}",
             "port" : 3306
-        },
-        {
-            "name" : "${CLUSTER_NAME:-cluster}-leader",
-            "port" : 3306
         }
     ],
     "checks": [
@@ -15,12 +11,6 @@
             "name" : "Galera sync check",
             "http" : "http://localhost:8080",
             "interval" : "10s"
-        },
-        {
-            "id" : "leader",
-            "name" : "Leader election TTL",
-            "service_id" : "${CLUSTER_NAME:-cluster}-leader",
-            "ttl" : "10s"
         }
     ]
 }
