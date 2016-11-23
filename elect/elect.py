@@ -17,6 +17,8 @@ class App:
 
     _sid = None
 
+    is_registered = False
+
     def __init__(self, cluster_name=None):
         self.cluster_name = cluster_name
         self.io_loop = tornado.ioloop.IOLoop.current()
@@ -72,15 +74,23 @@ class App:
 
     @gen.coroutine
     def register(self):
+        logger.debug('registering as leader')
         check = { 'ttl' : '10s', 'status' : 'passing' }
         res = yield self.consul_tornado.agent.service.register(self.get_service_name(), check = check)
+        self.is_registered = True
 
     @gen.coroutine
     def deregister(self):
-        self.consul_tornado.agent.service.deregister(self.get_service_name())
+        if not self.is_registered:
+            return
+        logger.debug('deregister leader')
+        yield self.consul_tornado.agent.service.deregister(self.get_service_name())
+        self.is_registered = False
 
     @gen.coroutine
     def elect(self):
+        # wait a bit before starting
+        yield gen.sleep(10)
         logger.info('start election routine')
         while True:
             tick = gen.sleep(5)
@@ -88,11 +98,9 @@ class App:
             can_participate, has_lock = yield [ self.can_participate(), self.acquire_lock() ]
             logger.debug('can participate: %s, has lock: %s', can_participate, has_lock)
             if can_participate and has_lock:
-                logger.debug('registering as leader')
                 self.register()
                 self.renew_ttl()
             else:
-                logger.debug('deregister and release')
                 self.deregister()
                 self.release_lock()
             yield tick
