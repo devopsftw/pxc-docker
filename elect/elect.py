@@ -46,7 +46,11 @@ class App:
     def acquire_lock(self):
         logger.debug('acquire lock on key "%s" with session "%s"', self.get_key_name(), self._sid)
         result = yield self.consul_tornado.kv.put(self.get_key_name(), os.getenv('HOSTNAME'), acquire=self._sid)
-        return result
+        index, data = yield self.consul_tornado.kv.get(self.get_key_name())
+        if data['Session'] == self._sid:
+            return True
+        else:
+            return False
 
     @gen.coroutine
     def release_lock(self):
@@ -61,6 +65,7 @@ class App:
     def get_check_name(self):
         return 'service:' + self.get_service_name()
 
+    @gen.coroutine
     def renew_ttl(self):
         yield self.consul_tornado.agent.check.ttl_pass(self.get_check_name())
 
