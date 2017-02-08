@@ -103,8 +103,8 @@ class App:
             can_participate, has_lock = yield [ self.can_participate(), self.acquire_lock() ]
             logger.debug('can participate: %s, has lock: %s', can_participate, has_lock)
             if can_participate and has_lock:
-                self.register()
-                self.renew_ttl()
+                yield self.register()
+                yield self.renew_ttl()
             else:
                 self.deregister()
                 self.release_lock()
