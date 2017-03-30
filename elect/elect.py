@@ -79,6 +79,8 @@ class App:
 
     @gen.coroutine
     def register(self):
+        if self.is_registered:
+            return
         logger.debug('registering as leader')
         check = { 'ttl' : '10s', 'status' : 'passing' }
         res = yield self.consul_tornado.agent.service.register(self.get_service_name(), check = check)
