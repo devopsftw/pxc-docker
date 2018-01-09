@@ -10,6 +10,7 @@ case "$1" in
 	seed)
 		# bootstrapping
 		if [ ! -f /var/lib/mysql/skip-cluster-bootstrapping ]; then
+			mysql_install_db
 			if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
 				MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32)
 				echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD"
