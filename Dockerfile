@@ -1,4 +1,4 @@
-FROM devopsftw/baseimage
+FROM devopsftw/baseimage:0.2.2
 MAINTAINER Alex Salt <alex.salt@e96.ru>
 
 ENV DEBIAN_FRONTEND noninteractive
